@@ -88,7 +88,7 @@ extension Bundle {
                     fatalError("Failed to parse json: \(error)")
                 }
             }
-            
+
         }
         #endif
         guard let filePath = url(forResource: name, withExtension: "json") else {
@@ -164,7 +164,7 @@ public struct Matcher {
         graphs = resource.graphs
 
         matchers = Box([])
-        matchers.value = dictionaryMatchers + [l33tMatch, spatialMatch]
+        matchers.value = dictionaryMatchers + [l33tMatch, spatialMatch, repeatMatch]
     }
 
     public var keyboardAverageDegree: Double {
@@ -438,6 +438,40 @@ private extension Matcher {
                     break
                 }
 
+            }
+        }
+        return result
+    }
+}
+
+private extension Matcher {
+    func repeatMatch(_ password: String) -> [Match] {
+        var result = [Match]()
+        var i = password.startIndex
+        while i < password.endIndex {
+            var j = password.index(after: i)
+            while true {
+                let prevChar = String(password[password.index(before: j)])
+                let curChar = j < password.endIndex ? String(password[j]) : ""
+
+                if prevChar == curChar {
+                    j = password.index(after: j)
+                } else {
+                    // don't consider length 1 or 2 chains.
+                    if password[i..<j].count > 2 {
+                        let match = Match(
+                            pattern: "repeat",
+                            token: String(password[i..<j]),
+                            i: i,
+                            j: password.index(before: j),
+                            repeatedChar: String(password[i])
+                        )
+                        result.append(match)
+                    }
+
+                    i = j
+                    break
+                }
             }
         }
         return result

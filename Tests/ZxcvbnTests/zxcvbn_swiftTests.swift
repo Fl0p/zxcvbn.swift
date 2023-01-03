@@ -22,4 +22,10 @@ final class ZxcvbnTests: XCTestCase {
         let matches = matcher.omnimatch(password: "qwerty", userInputs: [])
         XCTAssert(matches.contains { $0.pattern == "spatial" })
     }
+
+    func testRepeatMatch() {
+        let matcher = Matcher()
+        let matches = matcher.omnimatch(password: "aaaaaaaa", userInputs: [])
+        XCTAssert(matches.contains { $0.pattern == "repeat" })
+    }
 }
