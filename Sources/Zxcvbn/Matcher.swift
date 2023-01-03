@@ -5,50 +5,144 @@ typealias MatcherBlock = (String) -> [Match]
 
 public struct MatchResources {
     let dictionaryMatchers: [MatcherBlock]
-    let graphs: [String: [String: [String]]]
+    let graphs: [String: [String: [String?]]]
 
-    static var shared: Self = MatchResources(dictionaryMatchers: [], graphs: [:])
+    static var shared: Self = MatchResources(dictionaryMatchers: frequencyLists, graphs: adjacencyGraphs)
+
+    static var frequencyLists: [MatcherBlock] = {
+        var dictionaryMatchers = [MatcherBlock]()
+        let json = Bundle.module.loadJSON(named: "frequency_lists")
+        for (dictName, wordList) in json {
+            let rankedDict = buildRankedList((wordList as! [String]))
+            dictionaryMatchers.append(buildDictMatcher(dictName, rankedDict: rankedDict))
+        }
+        return dictionaryMatchers
+    }()
+
+    static var adjacencyGraphs: [String: [String: [String?]]] = {
+        Bundle.module.loadJSON(named: "adjacency_graphs") as! [String: [String: [String?]]]
+    }()
+    static func buildRankedList(_ unrankedList: [String]) -> [String: Int] {
+        var result = [String: Int]()
+        for (i, word) in unrankedList.enumerated() {
+            result[word] = i + 1
+        }
+        return result
+    }
+
+    static func buildDictMatcher(_ dictName: String, rankedDict: [String: Int]) -> MatcherBlock {
+        { password in
+            let matches = dictionaryMatch(password, rankedDict: rankedDict)
+            return matches.map { match in
+                var match = match
+                match.dictionaryName = dictName
+                return match
+            }
+        }
+    }
+
+    static func dictionaryMatch(_ password: String, rankedDict: [String: Int]) -> [Match] {
+        var result = [Match]()
+        let passwordLower = password.lowercased()
+
+        var i = password.startIndex
+        while i < password.endIndex {
+            var j = i
+            while j < password.endIndex {
+                let word = String(passwordLower[i...j])
+                if let rank = rankedDict[word] {
+                    let match = Match(
+                        pattern: "dictionary",
+                        token: String(password[i...j]),
+                        i: i,
+                        j: j,
+                        matchedWord: word,
+                        rank: rank
+                    )
+                    result.append(match)
+                }
+                j = password.index(after: j)
+            }
+            i = password.index(after: i)
+        }
+        return result
+    }
 }
 
-public struct Match {
-    let pattern: String
+extension Bundle {
+    func loadJSON(named name: String) -> [String: Any] {
+        #if DEBUG
+        if !isLoaded {
+            if name == "adjacency_graphs" {
+                let data = AdjacencyGraphs.data.data(using: .utf8)!
+                do {
+                    return try JSONSerialization.jsonObject(with: data) as! [String: Any]
+                } catch {
+                    fatalError("Failed to parse json: \(error)")
+                }
+            } else if name == "frequency_lists" {
+                let data = FrequencyLists.data.data(using: .utf8)!
+                do {
+                    return try JSONSerialization.jsonObject(with: data) as! [String: Any]
+                } catch {
+                    fatalError("Failed to parse json: \(error)")
+                }
+            }
+            
+        }
+        #endif
+        guard let filePath = url(forResource: name, withExtension: "json") else {
+            fatalError("File not found: \(name)")
+        }
+        do {
+            let data = try Data(contentsOf: filePath)
+            return try JSONSerialization.jsonObject(with: data) as! [String: Any]
+        } catch {
+            fatalError("Failed to parse json: \(error)")
+        }
+
+    }
+}
+
+public struct Match: Equatable {
+    var pattern: String
     var token: String
-    let i: String.Index
-    let j: String.Index
-    let entropy: Double
-    let cardinality: Int
+    var i: String.Index
+    var j: String.Index
+    var entropy: Double?
+    var cardinality: Int?
 
     // Dictionary
-    let matchedWord: String
-    let dictionaryName: String
-    let rank: Int
-    let baseEntropy: Double
-    let upperCaseEntropy: Double
+    var matchedWord: String?
+    var dictionaryName: String?
+    var rank: Int?
+    var baseEntropy: Double?
+    var upperCaseEntropy: Double?
 
     // l33t
-    var l33t: Bool
-    var sub: [AnyHashable: Any]
-    var subDisplay: String
-    var l33tEntropy: Int
+    var l33t: Bool = false
+    // var sub: [AnyHashable: Any] = [:]
+    var subDisplay: String = ""
+    var l33tEntropy: Int?
 
     // Spatial
-    let graph: String
-    let turns: Int
-    let shiftedCount: Int
+    var graph: String?
+    var turns: Int?
+    var shiftedCount: Int?
 
     // Repeat
-    let repeatedChar: String
+    var repeatedChar: String?
 
     // Sequence
-    let sequenceName: String
-    let sequenceSpace: Int
-    let ascending: Bool
+    var sequenceName: String?
+    var sequenceSpace: Int?
+    var ascending: Bool?
 
     // Date
-    let day: Int
-    let month: Int
-    let year: Int
-    let separator: String
+    var day: Int?
+    var month: Int?
+    var year: Int?
+    var separator: String?
 }
 
 class Box<Value> {
@@ -61,7 +155,7 @@ class Box<Value> {
 public struct Matcher {
 
     private let dictionaryMatchers: [MatcherBlock]
-    private let graphs: [String: [String: [String]]]
+    private let graphs: [String: [String: [String?]]]
     private var matchers: Box<[MatcherBlock]>
 
     public init() {
@@ -70,7 +164,7 @@ public struct Matcher {
         graphs = resource.graphs
 
         matchers = Box([])
-        matchers.value = [l33tMatch]
+        matchers.value = dictionaryMatchers + [l33tMatch, spatialMatch]
     }
 
     public var keyboardAverageDegree: Double {
@@ -91,8 +185,22 @@ public struct Matcher {
 
 public extension Matcher {
 
-    func omnimatch(password: String, userInputs: [Any]) -> [Any] {
-        return []
+    func omnimatch(password: String, userInputs: [String]) -> [Match] {
+        if !userInputs.isEmpty {
+            var rankedUserInputsDict = [String: Int]()
+            for i in 0..<userInputs.count {
+                rankedUserInputsDict[userInputs[i].lowercased()] = i + 1
+            }
+            matchers.value.append(MatchResources.buildDictMatcher("user_inputs", rankedDict: rankedUserInputsDict))
+        }
+
+        var matches = [Match]()
+
+        for block in matchers.value {
+            matches.append(contentsOf: block(password))
+        }
+
+        return matches.sorted(by: { $0.i == $1.i ? $0.j > $1.j : $0.i < $1.i  })
     }
 }
 
@@ -260,14 +368,91 @@ private extension Matcher {
 }
 
 private extension Matcher {
-    func calculateAverageDegree(graph: [String: [String]]) -> Double {
+    func spatialMatch(_ password: String) -> [Match] {
+        var matches = [Match]()
+        for (graphName, graph) in graphs {
+            matches.append(contentsOf: spatialMatchHelper(password, graph: graph, graphName: graphName))
+        }
+        return matches
+    }
+
+    func spatialMatchHelper(_ password: String, graph: [String: [String?]], graphName: String) -> [Match] {
+        var result = [Match]()
+        var i = password.startIndex
+        while (password.index(i, offsetBy: 1, limitedBy: password.endIndex) ?? password.endIndex) < password.endIndex && !password.isEmpty {
+            var j = password.index(after: i)
+            var lastDirection = -1
+            var turns = 0
+            var shiftedCount = 0
+
+            while true {
+                let prevChar = String(password[password.index(before: j)..<j])
+                var found = false
+                var foundDirection = -1
+                var curDirection = -1
+                let adjacents = graph[prevChar] ?? []
+
+                 // consider growing pattern by one character if j hasn't gone over the edge.
+
+                if j < password.endIndex {
+                    let curChar = String(password[j..<password.index(after: j)])
+                    for adj in adjacents {
+                        curDirection += 1
+                        if let adj = adj, adj.contains(curChar) {
+                            found = true
+                            foundDirection = curDirection
+                            if adj.range(of: curChar)?.contains(adj.index(after: adj.startIndex)) == true {
+                                // index 1 in the adjacency means the key is shifted, 0 means unshifted: A vs a, % vs 5, etc.
+                                // for example, 'q' is adjacent to the entry '2@'. @ is shifted w/ index 1, 2 is unshifted.
+                                shiftedCount += 1
+                            }
+                            if lastDirection != foundDirection {
+                                turns += 1
+                                lastDirection = foundDirection
+                            }
+                            break
+                        }
+                    }
+                }
+
+                // if the current pattern continued, extend j and try to grow again
+                if found {
+                    j = password.index(after: j)
+                    // otherwise push the pattern discovered so far, if any...
+                } else {
+                    // don't consider length 1 or 2 chains.
+                    if password[i..<j].count > 2 {
+                        let match = Match(
+                            pattern: "spatial",
+                            token: String(password[i..<j]),
+                            i: i,
+                            j: j,
+                            graph: graphName,
+                            turns: turns,
+                            shiftedCount: shiftedCount
+                        )
+                        result.append(match)
+                    }
+
+                    i = j
+                    break
+                }
+
+            }
+        }
+        return result
+    }
+}
+
+private extension Matcher {
+    func calculateAverageDegree(graph: [String: [String?]]) -> Double {
         // on qwerty, 'g' has degree 6, being adjacent to 'ftyhbv'. '\' has degree 1.
         // this calculates the average over all keys.
 
         var average = 0.0
 
         for key in graph.keys {
-            var neighbors = [String]()
+            var neighbors = [String?]()
             for n in (graph[key] ?? []) {
                 neighbors.append(n)
             }

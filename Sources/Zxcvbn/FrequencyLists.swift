@@ -1,3 +1,14 @@
+//
+//  File.swift
+//  
+//
+//  Created by Niil Öhlin on 2023-01-03.
+//
+
+import Foundation
+
+enum FrequencyLists {
+    static let data: String = """
 {
   "female_names": [
     "mary",
@@ -46806,7 +46817,7 @@
     "sucked",
     "sex123",
     "sexy69",
-    "pic\\'s",
+    "pic's",
     "tommyboy",
     "masterbating",
     "gretzky",
@@ -85097,4 +85108,7 @@
     "aaaaaaaaaa",
     "a'right"
   ]
+}
+
+"""
 }
