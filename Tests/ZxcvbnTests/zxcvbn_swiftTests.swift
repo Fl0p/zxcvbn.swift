@@ -28,4 +28,10 @@ final class ZxcvbnTests: XCTestCase {
         let matches = matcher.omnimatch(password: "aaaaaaaa", userInputs: [])
         XCTAssert(matches.contains { $0.pattern == "repeat" })
     }
+
+    func testSequenceMatch() {
+        let matcher = Matcher()
+        let matches = matcher.omnimatch(password: "rstuvwx", userInputs: [])
+        XCTAssert(matches.contains { $0.pattern == "sequence" })
+    }
 }

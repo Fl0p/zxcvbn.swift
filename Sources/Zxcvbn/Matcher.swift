@@ -164,7 +164,7 @@ public struct Matcher {
         graphs = resource.graphs
 
         matchers = Box([])
-        matchers.value = dictionaryMatchers + [l33tMatch, spatialMatch, repeatMatch]
+        matchers.value = dictionaryMatchers + [l33tMatch, spatialMatch, repeatMatch, sequenceMatch]
     }
 
     public var keyboardAverageDegree: Double {
@@ -475,6 +475,122 @@ private extension Matcher {
             }
         }
         return result
+    }
+}
+
+private extension Matcher {
+    func sequenceMatch(_ password: String) -> [Match] {
+        let sequences = [
+            "lower": "abcdefghijklmnopqrstuvwxyz",
+            "upper": "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+            "digits": "01234567890",
+        ]
+
+        var result = [Match]()
+
+        var i = password.startIndex
+        while i < password.endIndex {
+            var j = password.index(after: i)
+            var seq: String?
+            var seqName: String?
+            var seqDirection = 0
+
+            for (seqCandidateName, seqCandidate) in sequences {
+                let iN = seqCandidate.range(of: String(password[i]))?.lowerBound
+                let jN = j < password.endIndex ? seqCandidate.range(of: String(password[j]))?.lowerBound : nil
+                if let iN, let jN {
+                    let direction = iN < jN ? 1 : -1
+                    seq = seqCandidate
+                    seqName = seqCandidateName
+                    seqDirection = direction
+                    break
+                }
+            }
+            if let seq {
+                while true {
+                    let prevChar = String(password[password.index(before: j)])
+                    let curChar = j < password.endIndex ? String(password[j]) : nil
+                    let prevN = seq.range(of: prevChar)?.lowerBound
+                    let curN = curChar.flatMap { seq.range(of: $0)?.lowerBound }
+
+                    if let prevN, let curN, let nDirection = prevN < curN ? 1 : -1, nDirection == seqDirection {
+                        j = password.index(after: j)
+                    } else {
+                        if password[i..<j].count > 2 {
+                            let match = Match(
+                                pattern: "sequence",
+                                token: String(password[i..<j]),
+                                i: i,
+                                j: password.index(before: j),
+                                sequenceName: seqName,
+                                sequenceSpace: seq.count,
+                                ascending: seqDirection == 1
+                            )
+                            result.append(match)
+                        }
+                        break
+                    }
+                }
+            }
+            i = j
+        }
+        return result
+    }
+
+    func findAll(_ password: String, patternName: String, rx: NSRegularExpression) -> [Match] {
+        var matches = [Match]()
+
+        for result in rx.matches(in: password, range: NSRange(location: 0, length: password.count)) {
+            var match = Match(
+                pattern: patternName,
+                token: String(password[result.range]),
+                i: password.index(password.startIndex, offsetBy: result.range.location),
+                j: password.index(password.startIndex, offsetBy: result.range.location + result.range.length - 1)
+            )
+            if match.pattern == "date" && result.numberOfRanges == 6 {
+                guard
+                var month = Int(password[result.range(at: 1)]),
+                var day = Int(password[result.range(at: 3)]),
+                var year = Int(password[result.range(at: 5)])
+                else {
+                    continue
+                }
+
+                match.separator = result.range(at: 2).lowerBound < password.count ? String(password[result.range(at: 2)]) : ""
+
+                // tolerate both day-month and month-day order
+                if month >= 12 && month <= 31 && day <= 12 {
+                    let temp = day
+                    day = month
+                    month = temp
+                }
+                if day > 31 || month > 12 {
+                    continue
+                }
+                if year < 20 {
+                    year += 2000
+                } else if year < 100 {
+                    year += 1900
+                }
+                match.day = day
+                match.month = month
+                match.year = year
+            }
+            matches.append(match)
+        }
+        return matches
+    }
+}
+
+private extension String {
+    subscript(_ range: NSRange) -> Substring {
+        get {
+            self[convert(range: range)]
+        }
+    }
+
+    func convert(range: NSRange) -> Range<String.Index> {
+        index(startIndex, offsetBy: range.lowerBound)..<index(startIndex, offsetBy: range.upperBound)
     }
 }
 
