@@ -164,7 +164,15 @@ public struct Matcher {
         graphs = resource.graphs
 
         matchers = Box([])
-        matchers.value = dictionaryMatchers + [l33tMatch, spatialMatch, repeatMatch, sequenceMatch]
+        matchers.value = dictionaryMatchers + [
+            l33tMatch,
+            spatialMatch,
+            repeatMatch,
+            sequenceMatch,
+            digitsMatch,
+            yearMatch,
+            dateMatch
+        ]
     }
 
     public var keyboardAverageDegree: Double {
@@ -579,6 +587,18 @@ private extension Matcher {
             matches.append(match)
         }
         return matches
+    }
+
+    func digitsMatch(_ password: String) -> [Match] {
+        findAll(password, patternName: "digits", rx: try! NSRegularExpression(pattern: "\\d{3,}"))
+    }
+
+    func yearMatch(_ password: String) -> [Match] {
+        findAll(password, patternName: "year", rx: try! NSRegularExpression(pattern: "19\\d\\d|200\\d|201\\d"))
+    }
+
+    func dateMatch(_ password: String) -> [Match] {
+        findAll(password, patternName: "date", rx: try! NSRegularExpression(pattern: "(\\d{1,2})( |-|\\/|\\.|_)?(\\d{1,2})( |-|\\/|\\.|_)?(19\\d{2}|200\\d|201\\d|\\d{2})"))
     }
 }
 

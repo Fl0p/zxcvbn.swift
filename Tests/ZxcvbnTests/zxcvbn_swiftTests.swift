@@ -34,4 +34,22 @@ final class ZxcvbnTests: XCTestCase {
         let matches = matcher.omnimatch(password: "rstuvwx", userInputs: [])
         XCTAssert(matches.contains { $0.pattern == "sequence" })
     }
+
+    func testDigitsMatch() {
+        let matcher = Matcher()
+        let matches = matcher.omnimatch(password: "43207+o[n{}enoenctds+)*420420", userInputs: [])
+        XCTAssert(matches.contains { $0.pattern == "digits" })
+    }
+
+    func testYearMatch() {
+        let matcher = Matcher()
+        let matches = matcher.omnimatch(password: "iosnhtpdrnteon1984oshentos", userInputs: [])
+        XCTAssert(matches.contains { $0.pattern == "year" })
+    }
+
+    func testDateMatch() {
+        let matcher = Matcher()
+        let matches = matcher.omnimatch(password: "iosnhtpdrnteon25-05-1984sohe", userInputs: [])
+        XCTAssert(matches.contains { $0.pattern == "date" })
+    }
 }
