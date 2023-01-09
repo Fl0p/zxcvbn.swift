@@ -11,7 +11,7 @@ public struct MatchResources {
 
     static var frequencyLists: [MatcherBlock] = {
         var dictionaryMatchers = [MatcherBlock]()
-        let json = Bundle.module.loadJSON(named: "frequency_lists")
+        let json = FrequencyLists.json
         for (dictName, wordList) in json {
             let rankedDict = buildRankedList((wordList as! [String]))
             dictionaryMatchers.append(buildDictMatcher(dictName, rankedDict: rankedDict))
@@ -20,8 +20,9 @@ public struct MatchResources {
     }()
 
     static var adjacencyGraphs: [String: [String: [String?]]] = {
-        Bundle.module.loadJSON(named: "adjacency_graphs") as! [String: [String: [String?]]]
+        AdjacencyGraphs.json as! [String: [String: [String?]]]
     }()
+
     static func buildRankedList(_ unrankedList: [String]) -> [String: Int] {
         var result = [String: Int]()
         for (i, word) in unrankedList.enumerated() {
@@ -66,41 +67,6 @@ public struct MatchResources {
             i = password.index(after: i)
         }
         return result
-    }
-}
-
-extension Bundle {
-    func loadJSON(named name: String) -> [String: Any] {
-        #if DEBUG
-        if !isLoaded {
-            if name == "adjacency_graphs" {
-                let data = AdjacencyGraphs.data.data(using: .utf8)!
-                do {
-                    return try JSONSerialization.jsonObject(with: data) as! [String: Any]
-                } catch {
-                    fatalError("Failed to parse json: \(error)")
-                }
-            } else if name == "frequency_lists" {
-                let data = FrequencyLists.data.data(using: .utf8)!
-                do {
-                    return try JSONSerialization.jsonObject(with: data) as! [String: Any]
-                } catch {
-                    fatalError("Failed to parse json: \(error)")
-                }
-            }
-
-        }
-        #endif
-        guard let filePath = url(forResource: name, withExtension: "json") else {
-            fatalError("File not found: \(name)")
-        }
-        do {
-            let data = try Data(contentsOf: filePath)
-            return try JSONSerialization.jsonObject(with: data) as! [String: Any]
-        } catch {
-            fatalError("Failed to parse json: \(error)")
-        }
-
     }
 }
 
