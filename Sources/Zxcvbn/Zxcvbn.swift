@@ -3,7 +3,7 @@ import QuartzCore
 
 public struct Zxcvbn {
 
-    func passwordStrength(_ password: String, userInputs: [String] = []) -> Score {
+    public func passwordStrength(_ password: String, userInputs: [String] = []) -> Score {
         let start = CACurrentMediaTime()
         let matches = Matcher().omnimatch(password: password, userInputs: userInputs)
         var score = Scorer().minimumEntropyMatch(password: password, matches: matches)
