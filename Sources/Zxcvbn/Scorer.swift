@@ -20,7 +20,11 @@ public struct Scorer {
         var matches = matches
         var k = password.startIndex
         while k < password.endIndex {
-            upToK[k] = upToK[password.index(before: k), default: 0] + log2(bruteforceCardinality)
+            if let indexBeforeK = password.index(k, offsetBy: -1, limitedBy: password.startIndex) {
+                upToK[k] = upToK[indexBeforeK, default: 0] + log2(bruteforceCardinality)
+            } else {
+                upToK[k] = 0 + log2(bruteforceCardinality)
+            }
             backpointers[k] = nil
 
             var modifiedMatches = matches
@@ -31,7 +35,12 @@ public struct Scorer {
 
                 var match = match
                 // see if best entropy up to i-1 + entropy of this match is less than the current minimum at j.
-                var candidateEntropy = upToK[password.index(before: match.i), default: 0] + calcEntropy(&match)
+                let candidateEntropy: Double
+                if let indexBeforeI = password.index(match.i, offsetBy: -1, limitedBy: password.startIndex) {
+                    candidateEntropy = upToK[indexBeforeI, default: 0] + calcEntropy(&match)
+                } else {
+                    candidateEntropy = 0 + calcEntropy(&match)
+                }
                 modifiedMatches[i] = match
                 if candidateEntropy < upToK[match.j, default: 0] {
                     upToK[match.j] = candidateEntropy
@@ -49,9 +58,17 @@ public struct Scorer {
         while k >= password.startIndex {
             if let match = backpointers[k] as? Match {
                 matchSequence.append(match)
-                k = password.index(before: match.i)
+                if let indexBeforeI = password.index(match.i, offsetBy: -1, limitedBy: password.startIndex) {
+                    k = indexBeforeI
+                } else {
+                    break
+                }
             } else {
-                k = password.index(before: k)
+                if let indexBeforeK = password.index(k, offsetBy: -1, limitedBy: password.startIndex) {
+                    k = indexBeforeK
+                } else {
+                    break
+                }
             }
         }
 
@@ -60,10 +77,10 @@ public struct Scorer {
         func makeBruteforceMatch(_ i: String.Index, _ j: String.Index) -> Match {
             Match(
                 pattern: "bruteforce",
-                token: String(password[i...j]),
+                token: String(password[i..<j]),
                 i: i,
                 j: j,
-                entropy: log2(pow(bruteforceCardinality, Double(password[i...j].count))),
+                entropy: log2(pow(bruteforceCardinality, Double(password[i..<j].count))),
                 cardinality: bruteforceCardinality
             )
         }
@@ -86,7 +103,7 @@ public struct Scorer {
         var minEntropy = 0.0
 
         if !password.isEmpty {
-            minEntropy = upToK[password.endIndex, default: 0]
+            minEntropy = upToK[password.index(before: password.endIndex), default: 0]
         }
 
         let crackTime = entropyToCrackTime(minEntropy)
@@ -103,9 +120,26 @@ public struct Scorer {
 }
 
 private extension Scorer {
+    /*
+    threat model -- stolen hash catastrophe scenario
+    assumes:
+    * passwords are stored as salted hashes, different random salt per user.
+      (making rainbow attacks infeasable.)
+    * hashes and salts were stolen. attacker is guessing passwords at max rate.
+    * attacker has several CPUs at their disposal.
+    * for a hash function like bcrypt/scrypt/PBKDF2, 10ms per guess is a safe lower bound.
+    * (usually a guess would take longer -- this assumes fast hardware and a small work factor.)
+    * adjust for your site accordingly if you use another hash function, possibly by
+    * several orders of magnitude!
+    */
     func entropyToCrackTime(_ entropy: Double) -> Double {
-        return 0
+        let singleGuess = 0.01
+        let numAttackers = 100.0
+
+        let secondsPerGuess = singleGuess / numAttackers
+        return pow(2, entropy) * secondsPerGuess / 2
     }
+
     func calculateBruteforceCardinality(password: String) -> Double {
         var digits = 0.0
         var upper = 0.0

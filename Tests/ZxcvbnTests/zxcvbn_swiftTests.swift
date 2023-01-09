@@ -52,4 +52,25 @@ final class ZxcvbnTests: XCTestCase {
         let matches = matcher.omnimatch(password: "iosnhtpdrnteon25-05-1984sohe", userInputs: [])
         XCTAssert(matches.contains { $0.pattern == "date" })
     }
+
+    func testEasyPassword() {
+        let zxcvbn = Zxcvbn()
+        XCTAssertEqual(zxcvbn.passwordStrength("easy password").value, 0)
+    }
+
+    func testEasyPassword1() {
+        let zxcvbn = Zxcvbn()
+        let score = zxcvbn.passwordStrength("easy password2")
+        XCTAssertEqual(score.value, 1)
+    }
+
+    func testStrongPassword() {
+        let zxcvbn = Zxcvbn()
+        XCTAssertEqual(zxcvbn.passwordStrength("dkgit dldig394595 &&(3").value, 4)
+    }
+
+    func testEmptyPassword() {
+        let zxcvbn = Zxcvbn()
+        XCTAssertEqual(zxcvbn.passwordStrength("").value, 0)
+    }
 }
