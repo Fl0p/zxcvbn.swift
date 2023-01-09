@@ -110,7 +110,7 @@ public struct Match: Equatable {
     var i: String.Index
     var j: String.Index
     var entropy: Double?
-    var cardinality: Int?
+    var cardinality: Double?
 
     // Dictionary
     var matchedWord: String?
@@ -121,9 +121,9 @@ public struct Match: Equatable {
 
     // l33t
     var l33t: Bool = false
-    // var sub: [AnyHashable: Any] = [:]
+    var sub: [String: String] = [:]
     var subDisplay: String = ""
-    var l33tEntropy: Int?
+    var l33tEntropy: Double?
 
     // Spatial
     var graph: String?
@@ -178,7 +178,7 @@ public struct Matcher {
     public var keyboardAverageDegree: Double {
         calculateAverageDegree(graph: graphs["qwerty"]!)
     }
-    public var keypadAverage: Double {
+    public var keypadAverageDegree: Double {
         calculateAverageDegree(graph: graphs["keypad"]!)
     }
 
@@ -339,6 +339,7 @@ private extension Matcher {
 
                     match.l33t = true
                     match.token = String(token)
+                    match.sub = matchSub
                     match.subDisplay = subDisplay.joined(separator: ",")
                     matches.append(match)
                 }
