@@ -3,6 +3,8 @@ import QuartzCore
 
 public struct Zxcvbn {
 
+    public init() {
+    }
     public func passwordStrength(_ password: String, userInputs: [String] = []) -> Score {
         let start = CACurrentMediaTime()
         let matches = Matcher().omnimatch(password: password, userInputs: userInputs)
