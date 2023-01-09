@@ -2,13 +2,13 @@
 import Foundation
 
 public struct Score {
-    let password: String
-    let entropy: String
-    let crackTime: String
-    let crackTimeDisplay: String
-    let value: Int
-    let matchSequence: [Match]
-    var calcTime: Double?
+    public let password: String
+    public let entropy: String
+    public let crackTime: String
+    public let crackTimeDisplay: String
+    public let value: Int
+    public let matchSequence: [Match]
+    public var calcTime: Double?
 }
 
 public struct Scorer {
