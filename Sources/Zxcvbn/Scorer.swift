@@ -187,7 +187,7 @@ private extension Scorer {
     }
 
     func roundToXDigits(_ number: Double, digits: Int) -> String {
-        String(format: "%.*f", Float(number), digits)
+        String(number.rounded(toPlaces: digits))
     }
 
     func displayTime(_ seconds: Double) -> String {
@@ -407,5 +407,12 @@ private extension Scorer {
         }
 
         return possibilities <= 1 ? 1 : log2(possibilities)
+    }
+}
+
+extension Double {
+    func rounded(toPlaces places: Int) -> Double {
+        let divisor = pow(10.0, Double(places))
+        return (self * divisor).rounded() / divisor
     }
 }
