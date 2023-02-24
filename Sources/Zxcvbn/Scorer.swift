@@ -187,7 +187,7 @@ private extension Scorer {
     }
 
     func roundToXDigits(_ number: Double, digits: Int) -> String {
-        String(format: "%.*f", number, digits)
+        String(format: "%.*f", Float(number), digits)
     }
 
     func displayTime(_ seconds: Double) -> String {
