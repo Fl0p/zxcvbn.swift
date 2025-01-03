@@ -3,13 +3,17 @@ import Foundation
 
 typealias MatcherBlock = (String) -> [Match]
 
-public struct MatchResources {
+struct UncheckedSendableWrapper<T>: @unchecked Sendable {
+    let value: T
+}
+
+public struct MatchResources: @unchecked Sendable {
     let dictionaryMatchers: [MatcherBlock]
     let graphs: [String: [String: [String?]]]
 
-    static var shared: Self = MatchResources(dictionaryMatchers: frequencyLists, graphs: adjacencyGraphs)
+    static let shared: Self = MatchResources(dictionaryMatchers: frequencyLists(), graphs: adjacencyGraphs)
 
-    static var frequencyLists: [MatcherBlock] = {
+    private static func frequencyLists() -> [MatcherBlock] {
         var dictionaryMatchers = [MatcherBlock]()
         let json = FrequencyLists.json
         for (dictName, wordList) in json {
@@ -17,11 +21,9 @@ public struct MatchResources {
             dictionaryMatchers.append(buildDictMatcher(dictName, rankedDict: rankedDict))
         }
         return dictionaryMatchers
-    }()
+    }
 
-    static var adjacencyGraphs: [String: [String: [String?]]] = {
-        AdjacencyGraphs.json as! [String: [String: [String?]]]
-    }()
+    static let adjacencyGraphs: [String: [String: [String?]]] = AdjacencyGraphs.json as! [String: [String: [String?]]]
 
     static func buildRankedList(_ unrankedList: [String]) -> [String: Int] {
         var result = [String: Int]()
