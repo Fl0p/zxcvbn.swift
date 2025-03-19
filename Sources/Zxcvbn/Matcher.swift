@@ -73,12 +73,12 @@ public struct MatchResources: @unchecked Sendable {
 }
 
 public struct Match: Equatable {
-    var pattern: String
-    var token: String
-    var i: String.Index
-    var j: String.Index
-    var entropy: Double?
-    var cardinality: Double?
+    public var pattern: String
+    public var token: String
+    public var i: String.Index
+    public var j: String.Index
+    public var entropy: Double?
+    public var cardinality: Double?
 
     // Dictionary
     var matchedWord: String?
