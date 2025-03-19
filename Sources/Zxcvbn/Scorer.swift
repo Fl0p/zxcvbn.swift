@@ -3,7 +3,7 @@ import Foundation
 public struct Score {
     public let password: String
     public let entropy: String
-    public let crackTime: String
+    public let crackTime: Double
     public let crackTimeDisplay: String
     public let value: Int
     public let matchSequence: [Match]
@@ -110,7 +110,7 @@ public struct Scorer {
         return Score(
             password: password,
             entropy: roundToXDigits(minEntropy, digits: 3),
-            crackTime: roundToXDigits(crackTime, digits: 3),
+            crackTime: crackTime,
             crackTimeDisplay: displayTime(crackTime),
             value: crackTimeToScore(crackTime),
             matchSequence: matchSequence
