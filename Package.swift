@@ -4,6 +4,7 @@ import PackageDescription
 
 let package = Package(
     name: "Zxcvbn",
+    platforms: [.iOS(.v15), .watchOS(.v7)],
     products: [
         .library(
             name: "Zxcvbn",
