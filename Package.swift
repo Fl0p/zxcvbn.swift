@@ -17,6 +17,7 @@ let package = Package(
             name: "Zxcvbn",
             dependencies: [],
             resources: [
+                .process("Resources")
             ]
         ),
         .testTarget(
