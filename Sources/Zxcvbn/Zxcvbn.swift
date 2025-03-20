@@ -9,7 +9,6 @@ public struct Zxcvbn {
     }
 
     public func passwordStrength(_ password: String, userInputs: [String] = []) -> Score {
-        
         let start = getCurrentTime()
         let matches = Matcher().omnimatch(password: password, userInputs: userInputs)
         var score = Scorer().minimumEntropyMatch(password: password, matches: matches)
