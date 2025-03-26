@@ -72,7 +72,7 @@ public struct MatchResources: @unchecked Sendable {
     }
 }
 
-public struct Match: Equatable {
+public struct Match: Equatable, CustomStringConvertible {
     public var pattern: String
     public var token: String
     public var i: String.Index
@@ -111,6 +111,10 @@ public struct Match: Equatable {
     var month: Int?
     var year: Int?
     var separator: String?
+
+    public var description: String {
+        return "Match (pattern:\(pattern), token:\(token), i:\(i), j:\(j))"
+    }
 }
 
 class Box<Value> {
@@ -134,12 +138,12 @@ public struct Matcher {
         matchers = Box([])
         matchers.value = dictionaryMatchers + [
             l33tMatch,
-            spatialMatch,
-            repeatMatch,
-            sequenceMatch,
             digitsMatch,
             yearMatch,
-            dateMatch
+            dateMatch,
+            repeatMatch,
+            sequenceMatch,
+            spatialMatch
         ]
     }
 
@@ -287,7 +291,7 @@ private extension Matcher {
 
             for matcher in dictionaryMatchers {
                 for match in matcher(subbedPassword) {
-                    let token = password[match.i..<match.j]
+                    let token = password[match.i...match.j]
                     // only return the matches that contain an actual substitution
                     if token.lowercased() == match.matchedWord {
                         continue
@@ -356,34 +360,35 @@ private extension Matcher {
     func spatialMatchHelper(_ password: String, graph: [String: [String?]], graphName: String) -> [Match] {
         var result = [Match]()
         var i = password.startIndex
-        while (password.index(i, offsetBy: 1, limitedBy: password.endIndex) ?? password.endIndex) < password.endIndex && !password.isEmpty {
+        while (i < password.index(password.endIndex, offsetBy: -1, limitedBy: password.startIndex) ?? password.endIndex) && !password.isEmpty {
             var j = password.index(after: i)
             var lastDirection = -1
             var turns = 0
             var shiftedCount = 0
 
             while true {
-                let prevChar = String(password[password.index(before: j)..<j])
+                let prevChar = String(password[password.index(before: j)])
                 var found = false
                 var foundDirection = -1
                 var curDirection = -1
                 let adjacents = graph[prevChar] ?? []
 
-                 // consider growing pattern by one character if j hasn't gone over the edge.
-
+                // consider growing pattern by one character if j hasn't gone over the edge.
                 if j < password.endIndex {
-                    let curChar = String(password[j..<password.index(after: j)])
+                    let curChar = String(password[j])
                     for adj in adjacents {
                         curDirection += 1
                         if let adj = adj, adj.contains(curChar) {
                             found = true
                             foundDirection = curDirection
-                            if adj.range(of: curChar)?.contains(adj.index(after: adj.startIndex)) == true {
+                            if adj.range(of: curChar)?.lowerBound == adj.index(adj.startIndex, offsetBy: 1) {
                                 // index 1 in the adjacency means the key is shifted, 0 means unshifted: A vs a, % vs 5, etc.
                                 // for example, 'q' is adjacent to the entry '2@'. @ is shifted w/ index 1, 2 is unshifted.
                                 shiftedCount += 1
                             }
                             if lastDirection != foundDirection {
+                                // adding a turn is correct even in the initial case when lastDirection is -1:
+                                // every spatial pattern starts with a turn.
                                 turns += 1
                                 lastDirection = foundDirection
                             }
@@ -398,12 +403,12 @@ private extension Matcher {
                     // otherwise push the pattern discovered so far, if any...
                 } else {
                     // don't consider length 1 or 2 chains.
-                    if password[i..<j].count > 2 {
+                    if password.distance(from: i, to: j) > 2 {
                         let match = Match(
                             pattern: "spatial",
                             token: String(password[i..<j]),
                             i: i,
-                            j: j,
+                            j: password.index(before: j),
                             graph: graphName,
                             turns: turns,
                             shiftedCount: shiftedCount
@@ -473,40 +478,55 @@ private extension Matcher {
             var seqDirection = 0
 
             for (seqCandidateName, seqCandidate) in sequences {
-                let iN = seqCandidate.range(of: String(password[i]))?.lowerBound
-                let jN = j < password.endIndex ? seqCandidate.range(of: String(password[j]))?.lowerBound : nil
-                if let iN, let jN {
-                    let direction = iN < jN ? 1 : -1
-                    seq = seqCandidate
-                    seqName = seqCandidateName
-                    seqDirection = direction
-                    break
+                if let iIndex = seqCandidate.firstIndex(of: password[i]),
+                   j < password.endIndex,
+                   let jIndex = seqCandidate.firstIndex(of: password[j]) {
+                    
+                    let iN = seqCandidate.distance(from: seqCandidate.startIndex, to: iIndex)
+                    let jN = seqCandidate.distance(from: seqCandidate.startIndex, to: jIndex)
+                    
+                    let direction = jN - iN
+                    if direction == 1 || direction == -1 {
+                        seq = seqCandidate
+                        seqName = seqCandidateName
+                        seqDirection = direction
+                        break
+                    }
                 }
             }
             if let seq {
                 while true {
                     let prevChar = String(password[password.index(before: j)])
                     let curChar = j < password.endIndex ? String(password[j]) : nil
-                    let prevN = seq.range(of: prevChar)?.lowerBound
-                    let curN = curChar.flatMap { seq.range(of: $0)?.lowerBound }
-
-                    if let prevN, let curN, let nDirection = prevN < curN ? 1 : -1, nDirection == seqDirection {
-                        j = password.index(after: j)
-                    } else {
-                        if password[i..<j].count > 2 {
-                            let match = Match(
-                                pattern: "sequence",
-                                token: String(password[i..<j]),
-                                i: i,
-                                j: password.index(before: j),
-                                sequenceName: seqName,
-                                sequenceSpace: seq.count,
-                                ascending: seqDirection == 1
-                            )
-                            result.append(match)
+                    
+                    if let prevIndex = seq.firstIndex(of: prevChar.first!),
+                       let curChar = curChar,
+                       let curIndex = seq.firstIndex(of: curChar.first!) {
+                        
+                        let prevN = seq.distance(from: seq.startIndex, to: prevIndex)
+                        let curN = seq.distance(from: seq.startIndex, to: curIndex)
+                        
+                        if curN - prevN == seqDirection {
+                            j = password.index(after: j)
+                        } else {
+                            break
                         }
+                    } else {
                         break
                     }
+                }
+                
+                if password.distance(from: i, to: j) > 2 {
+                    let match = Match(
+                        pattern: "sequence",
+                        token: String(password[i..<j]),
+                        i: i,
+                        j: password.index(before: j),
+                        sequenceName: seqName,
+                        sequenceSpace: seq.count,
+                        ascending: seqDirection == 1
+                    )
+                    result.append(match)
                 }
             }
             i = j
@@ -595,7 +615,7 @@ private extension Matcher {
             for n in (graph[key] ?? []) {
                 neighbors.append(n)
             }
-            average += Double(neighbors.count)
+            average += Double(neighbors.compactMap { $0 }.count)
         }
         average /= Double(graph.count)
         return average
