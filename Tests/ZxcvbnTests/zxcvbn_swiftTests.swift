@@ -47,6 +47,12 @@ final class ZxcvbnTests: XCTestCase {
         XCTAssert(matches.contains { $0.pattern == "year" })
     }
 
+    func testYearMatch2026() {
+        let matcher = Matcher()
+        let matches = matcher.omnimatch(password: "duwb2025fgx", userInputs: [])
+        XCTAssert(matches.contains { $0.pattern == "year" })
+    }
+
     func testDateMatch() {
         let matcher = Matcher()
         let matches = matcher.omnimatch(password: "iosnhtpdrnteon25-05-1984sohe", userInputs: [])
@@ -62,15 +68,25 @@ final class ZxcvbnTests: XCTestCase {
         let zxcvbn = Zxcvbn()
         let score = zxcvbn.passwordStrength("easy password2")
         XCTAssertEqual(score.value, 1)
+        XCTAssertEqual(score.entropy, "21.011")
     }
 
     func testStrongPassword() {
         let zxcvbn = Zxcvbn()
-        XCTAssertEqual(zxcvbn.passwordStrength("dkgit dldig394595 &&(3").value, 4)
+        let result = zxcvbn.passwordStrength("dkgit dldig394595 &&(3")
+        XCTAssertEqual(result.value, 4)
+        XCTAssertEqual(result.entropy, "100.877")
     }
 
     func testEmptyPassword() {
         let zxcvbn = Zxcvbn()
         XCTAssertEqual(zxcvbn.passwordStrength("").value, 0)
+    }
+
+    func testPasswordCompare() {
+        let zxcvbn = Zxcvbn()
+        let result1 = zxcvbn.passwordStrength("PSabcdrvst2025")
+        let result2 = zxcvbn.passwordStrength("PSabcdrvst2025$")
+        XCTAssertGreaterThan(result2.crackTime, result1.crackTime)
     }
 }

@@ -263,7 +263,7 @@ private extension Scorer {
     func digitsEntropy(_ match: Match) -> Double {
         return log2(pow(10, Double(match.token.count)))
     }
-    static let numYears = 119.0 // years match against 1900 - 2019
+    static let numYears = 129.0 // years match against 1900 - 2029
     static let numMonths = 12.0
     static let numDays = 31.0
 
@@ -289,34 +289,36 @@ private extension Scorer {
     func spatialEntropy(_ match: Match) -> Double {
         let matcher = Matcher()
         let s: Int
-        let d: Double
+        let d: Int
         if ["qwerty", "dvorak"].contains(match.graph) {
             s = matcher.keyboardStartingPositions
-            d = matcher.keyboardAverageDegree
+            d = Int(matcher.keyboardAverageDegree)
         } else {
             s = matcher.keypadStartingPositions
-            d = matcher.keypadAverageDegree
+            d = Int(matcher.keypadAverageDegree)
         }
-        var possibilities = 0.0
-        let turns = match.turns ?? 0
+        var possibilities = 0
+        let L = match.token.count
+        let t = match.turns ?? 0
         // Estimate the number of possible patterns w/ length L or less with t turns or less.
-        for i in 2...match.token.count {
-            let possibleTurns = min(turns, i - 1)
+        for i in 2...L {
+            let possibleTurns = min(t, i - 1)
             for j in 1...possibleTurns {
-                possibilities += binom(i - 1, j - 1) * Double(s) * pow(d, Double(j))
+                possibilities += Int(binom(i - 1, j - 1)) * s * Int(pow(Double(d), Double(j)))
             }
         }
-        var entropy = log2(possibilities)
+        var entropy = log2(Double(possibilities))
         // add extra entropy for shifted keys. (% instead of 5, A instead of a.)
         // math is similar to extra entropy from uppercase letters in dictionary matches.
 
         if let shiftedCount = match.shiftedCount, shiftedCount > 0 {
-            let unshiftedCount = match.token.count - shiftedCount
-            possibilities = 0.0
-            for i in 0...min(shiftedCount, unshiftedCount) {
-                possibilities += binom(shiftedCount + unshiftedCount, i)
+            let S = shiftedCount
+            let U = match.token.count - shiftedCount
+            var possibilities = 0
+            for i in 0...min(S, U) {
+                possibilities += Int(binom(S + U, i))
             }
-            entropy += log2(possibilities)
+            entropy += log2(Double(possibilities))
         }
 
         return entropy
@@ -343,7 +345,8 @@ private extension Scorer {
         match.baseEntropy = log2(Double(match.rank ?? 0))
         match.upperCaseEntropy = extraUppercaseEntropy(match)
         match.l33tEntropy = extraL33tEntropy(match)
-        return (match.baseEntropy ?? 0) + (match.upperCaseEntropy ?? 0) + (match.l33tEntropy ?? 0)
+        let result = (match.baseEntropy ?? 0) + (match.upperCaseEntropy ?? 0) + (match.l33tEntropy ?? 0)
+        return result
     }
 
     func extraUppercaseEntropy(_ match: Match) -> Double {
