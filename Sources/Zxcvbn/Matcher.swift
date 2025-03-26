@@ -564,7 +564,7 @@ private extension Matcher {
                 if day > 31 || month > 12 {
                     continue
                 }
-                if year < 20 {
+                if year < 30 {
                     year += 2000
                 } else if year < 100 {
                     year += 1900
@@ -583,11 +583,11 @@ private extension Matcher {
     }
 
     func yearMatch(_ password: String) -> [Match] {
-        findAll(password, patternName: "year", rx: try! NSRegularExpression(pattern: "19\\d\\d|200\\d|201\\d"))
+        findAll(password, patternName: "year", rx: try! NSRegularExpression(pattern: "19\\d\\d|200\\d|201\\d|202\\d"))
     }
 
     func dateMatch(_ password: String) -> [Match] {
-        findAll(password, patternName: "date", rx: try! NSRegularExpression(pattern: "(\\d{1,2})( |-|\\/|\\.|_)?(\\d{1,2})( |-|\\/|\\.|_)?(19\\d{2}|200\\d|201\\d|\\d{2})"))
+        findAll(password, patternName: "date", rx: try! NSRegularExpression(pattern: "(\\d{1,2})( |-|\\/|\\.|_)?(\\d{1,2})( |-|\\/|\\.|_)?(19\\d{2}|200\\d|201\\d|202\\d|\\d{2})"))
     }
 }
 

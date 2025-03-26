@@ -263,7 +263,7 @@ private extension Scorer {
     func digitsEntropy(_ match: Match) -> Double {
         return log2(pow(10, Double(match.token.count)))
     }
-    static let numYears = 119.0 // years match against 1900 - 2019
+    static let numYears = 129.0 // years match against 1900 - 2029
     static let numMonths = 12.0
     static let numDays = 31.0
 

@@ -47,6 +47,12 @@ final class ZxcvbnTests: XCTestCase {
         XCTAssert(matches.contains { $0.pattern == "year" })
     }
 
+    func testYearMatch2026() {
+        let matcher = Matcher()
+        let matches = matcher.omnimatch(password: "duwb2025fgx", userInputs: [])
+        XCTAssert(matches.contains { $0.pattern == "year" })
+    }
+
     func testDateMatch() {
         let matcher = Matcher()
         let matches = matcher.omnimatch(password: "iosnhtpdrnteon25-05-1984sohe", userInputs: [])
